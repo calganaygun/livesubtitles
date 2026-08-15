@@ -62,6 +62,15 @@ Local artifacts are suitable for development and personal use, but they are not 
 
 For a GitHub local release, upload the DMG and its `.sha256` file. The ZIP and its checksum are optional alternatives for users who do not want a disk image.
 
+Tag pushes automate this process. The tag must be `v` followed by the app's `MARKETING_VERSION`:
+
+```sh
+git tag v1.0
+git push origin v1.0
+```
+
+The GitHub Actions workflow builds the DMG on macOS, verifies the version, and publishes the DMG plus its checksum as release assets.
+
 ## Notarized release
 
 The release script requires Apple Developer Program membership, a **Developer ID Application** certificate in Keychain, and stored `notarytool` credentials.

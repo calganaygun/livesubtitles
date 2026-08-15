@@ -1,0 +1,56 @@
+name: Release local build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: local-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Verify tag matches app version
+        shell: bash
+        run: |
+          app_version="$(xcodebuild \
+            -project LiveSubtitles.xcodeproj \
+            -scheme LiveSubtitles \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -showBuildSettings | \
+            awk '/MARKETING_VERSION/ { print $3; exit }')"
+          tag_version="${GITHUB_REF_NAME#v}"
+
+          if [[ "$tag_version" != "$app_version" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match app version $app_version." >&2
+            exit 1
+          fi
+
+      - name: Build DMG and checksum
+        run: ./scripts/build-local.sh
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/*-local.dmg \
+            dist/*-local.dmg.sha256 \
+            --verify-tag \
+            --title "Live Subtitles $GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "This is an ad-hoc signed local build and is not notarized by Apple. Verify the SHA-256 file and follow the GitHub Releases installation instructions in the README."
