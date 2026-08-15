@@ -7,20 +7,38 @@ struct SubtitleOverlayView: View {
 
     var body: some View {
         VStack(spacing: subtitles.notchModeEnabled ? 5 : 8) {
-            Text(subtitles.transcript)
-                .font(.system(size: displayedFontSize, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(subtitles.notchModeEnabled ? 2 : 3)
-                .frame(maxWidth: .infinity)
+            if subtitles.notchModeEnabled {
+                NotchCaptionLine(
+                    text: subtitles.transcript,
+                    font: .system(size: displayedFontSize, weight: .semibold, design: .rounded),
+                    color: .white,
+                    height: displayedFontSize + 8
+                )
+            } else {
+                Text(subtitles.transcript)
+                    .font(.system(size: displayedFontSize, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity)
+            }
 
             if subtitles.translationEnabled, !subtitles.translation.isEmpty {
-                Text(subtitles.translation)
-                    .font(.system(size: max(14, displayedFontSize - 5), weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.82))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(subtitles.notchModeEnabled ? 1 : 2)
-                    .frame(maxWidth: .infinity)
+                if subtitles.notchModeEnabled {
+                    NotchCaptionLine(
+                        text: subtitles.translation,
+                        font: .system(size: max(14, displayedFontSize - 5), weight: .medium, design: .rounded),
+                        color: .white.opacity(0.82),
+                        height: max(14, displayedFontSize - 5) + 7
+                    )
+                } else {
+                    Text(subtitles.translation)
+                        .font(.system(size: max(16, subtitles.fontSize - 5), weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity)
+                }
             }
 
             if let status = subtitles.statusMessage {
@@ -87,6 +105,56 @@ struct SubtitleOverlayView: View {
     private func openScreenCaptureSettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
         NSWorkspace.shared.open(url)
+    }
+}
+
+private struct NotchCaptionLine: View {
+    let text: String
+    let font: Font
+    let color: Color
+    let height: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollViewReader { scrollProxy in
+                ScrollView(.horizontal) {
+                    HStack(spacing: 0) {
+                        Text(text)
+                            .font(font)
+                            .foregroundStyle(color)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .id("caption-end")
+                    }
+                    .frame(minWidth: geometry.size.width, alignment: .center)
+                }
+                .scrollIndicators(.hidden)
+                .allowsHitTesting(false)
+                .onAppear {
+                    scrollToEnd(using: scrollProxy, animated: false)
+                }
+                .onChange(of: text) { _, _ in
+                    scrollToEnd(using: scrollProxy, animated: true)
+                }
+            }
+        }
+        .frame(height: height)
+        .accessibilityLabel(text)
+    }
+
+    private func scrollToEnd(using proxy: ScrollViewProxy, animated: Bool) {
+        DispatchQueue.main.async {
+            if animated {
+                withAnimation(.linear(duration: 0.16)) {
+                    proxy.scrollTo("caption-end", anchor: .trailing)
+                }
+            } else {
+                proxy.scrollTo("caption-end", anchor: .trailing)
+            }
+        }
     }
 }
 
