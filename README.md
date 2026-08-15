@@ -10,6 +10,7 @@ A lightweight native macOS menu-bar app that captions system audio in real time 
 - Live system-audio transcription with Apple Speech
 - Optional on-device English translation
 - Configurable language, text size, and background opacity
+- Optional compact caption placement at the MacBook notch
 - No accounts, analytics, servers, or API keys
 
 ## Build

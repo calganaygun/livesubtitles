@@ -70,13 +70,17 @@ final class OverlayPanelController {
     static let shared = OverlayPanelController()
 
     private var panel: NSPanel?
+    private var standardFrame: NSRect?
+
+    private let standardSize = NSSize(width: 760, height: 190)
+    private let notchSize = NSSize(width: 560, height: 132)
 
     func install() {
         guard panel == nil else { return }
 
         let content = SubtitleOverlayView(subtitles: .shared)
         let hostingView = NSHostingView(rootView: content)
-        let size = NSSize(width: 760, height: 190)
+        let size = SubtitleCoordinator.shared.notchModeEnabled ? notchSize : standardSize
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let origin = NSPoint(
             x: visibleFrame.midX - size.width / 2,
@@ -93,20 +97,56 @@ final class OverlayPanelController {
         panel.level = .floating
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
-        panel.isMovableByWindowBackground = true
+        panel.hasShadow = !SubtitleCoordinator.shared.notchModeEnabled
+        panel.isMovableByWindowBackground = !SubtitleCoordinator.shared.notchModeEnabled
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
-        panel.setFrameAutosaveName("SubtitleOverlay")
-        panel.setContentSize(size)
-        panel.orderFrontRegardless()
         self.panel = panel
+        updatePlacement()
+        panel.orderFrontRegardless()
     }
 
     func show() {
         install()
         panel?.orderFrontRegardless()
+    }
+
+    func updatePlacement() {
+        guard let panel else { return }
+
+        if SubtitleCoordinator.shared.notchModeEnabled {
+            if panel.isMovableByWindowBackground {
+                standardFrame = panel.frame
+            }
+            panel.setFrameAutosaveName("")
+            panel.isMovableByWindowBackground = false
+            panel.hasShadow = false
+            panel.ignoresMouseEvents = true
+            panel.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 1)
+            panel.setFrame(notchFrame(on: panel.screen ?? NSScreen.main), display: true, animate: true)
+        } else {
+            panel.isMovableByWindowBackground = true
+            panel.hasShadow = true
+            panel.ignoresMouseEvents = false
+            panel.level = .floating
+            panel.setContentSize(standardSize)
+            _ = panel.setFrameAutosaveName("SubtitleOverlay")
+
+            if let standardFrame {
+                panel.setFrame(standardFrame, display: true, animate: true)
+            }
+        }
+    }
+
+    private func notchFrame(on screen: NSScreen?) -> NSRect {
+        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        return NSRect(
+            x: screenFrame.midX - notchSize.width / 2,
+            y: screenFrame.maxY - notchSize.height,
+            width: notchSize.width,
+            height: notchSize.height
+        )
     }
 }
 

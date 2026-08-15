@@ -11,6 +11,7 @@ final class SubtitleCoordinator: ObservableObject {
     @Published private(set) var statusMessage: String?
     @Published private(set) var selectedLocaleIdentifier: String
     @Published private(set) var translationEnabled: Bool
+    @Published private(set) var notchModeEnabled: Bool
     @Published private(set) var fontSize: Double
     @Published private(set) var backgroundOpacity: Double
 
@@ -29,6 +30,7 @@ final class SubtitleCoordinator: ObservableObject {
             ? preferred
             : (locales.first(where: { $0.identifier.hasPrefix(Locale.current.language.languageCode?.identifier ?? "en") })?.identifier ?? "en-US")
         translationEnabled = defaults.object(forKey: "translationEnabled") as? Bool ?? false
+        notchModeEnabled = defaults.object(forKey: "notchModeEnabled") as? Bool ?? false
         fontSize = defaults.object(forKey: "fontSize") as? Double ?? 28
         backgroundOpacity = defaults.object(forKey: "backgroundOpacity") as? Double ?? 0.78
     }
@@ -84,6 +86,13 @@ final class SubtitleCoordinator: ObservableObject {
         translationEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: "translationEnabled")
         if !enabled { translation = "" }
+    }
+
+    func setNotchModeEnabled(_ enabled: Bool) {
+        guard notchModeEnabled != enabled else { return }
+        notchModeEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "notchModeEnabled")
+        OverlayPanelController.shared.updatePlacement()
     }
 
     func setFontSize(_ size: Double) {

@@ -6,20 +6,20 @@ struct SubtitleOverlayView: View {
     @ObservedObject var subtitles: SubtitleCoordinator
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: subtitles.notchModeEnabled ? 5 : 8) {
             Text(subtitles.transcript)
-                .font(.system(size: subtitles.fontSize, weight: .semibold, design: .rounded))
+                .font(.system(size: displayedFontSize, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
-                .lineLimit(3)
+                .lineLimit(subtitles.notchModeEnabled ? 2 : 3)
                 .frame(maxWidth: .infinity)
 
             if subtitles.translationEnabled, !subtitles.translation.isEmpty {
                 Text(subtitles.translation)
-                    .font(.system(size: max(16, subtitles.fontSize - 5), weight: .medium, design: .rounded))
+                    .font(.system(size: max(14, displayedFontSize - 5), weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.82))
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    .lineLimit(subtitles.notchModeEnabled ? 1 : 2)
                     .frame(maxWidth: .infinity)
             }
 
@@ -42,20 +42,46 @@ struct SubtitleOverlayView: View {
             TranslationBridge(subtitles: subtitles)
                 .frame(width: 0, height: 0)
         }
-        .padding(.horizontal, 26)
-        .padding(.vertical, 18)
+        .padding(.horizontal, subtitles.notchModeEnabled ? 22 : 26)
+        .padding(.top, subtitles.notchModeEnabled ? 38 : 18)
+        .padding(.bottom, subtitles.notchModeEnabled ? 12 : 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.black.opacity(subtitles.backgroundOpacity))
+            if subtitles.notchModeEnabled {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 24,
+                    bottomTrailingRadius: 24,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+                .fill(.black)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(.white.opacity(0.12), lineWidth: 1)
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: 24,
+                        bottomTrailingRadius: 24,
+                        topTrailingRadius: 0,
+                        style: .continuous
+                    )
+                    .stroke(.white.opacity(0.1), lineWidth: 1)
                 }
+            } else {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.black.opacity(subtitles.backgroundOpacity))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.12), lineWidth: 1)
+                    }
+            }
         }
-        .padding(4)
+        .padding(subtitles.notchModeEnabled ? 0 : 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Live subtitles")
+    }
+
+    private var displayedFontSize: Double {
+        subtitles.notchModeEnabled ? min(subtitles.fontSize, 24) : subtitles.fontSize
     }
 
     private func openScreenCaptureSettings() {
@@ -163,6 +189,11 @@ struct SettingsView: View {
             }
 
             Section("Appearance") {
+                Toggle("Show captions at the MacBook notch", isOn: Binding(
+                    get: { subtitles.notchModeEnabled },
+                    set: { subtitles.setNotchModeEnabled($0) }
+                ))
+
                 LabeledContent("Text size") {
                     Slider(value: Binding(
                         get: { subtitles.fontSize },
